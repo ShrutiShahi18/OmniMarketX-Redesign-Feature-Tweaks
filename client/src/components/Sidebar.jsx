@@ -187,8 +187,8 @@ export default function Sidebar({
         >
           <span>
             {theme === "dark"
-              ? "Light mode"
-              : "Dark mode"}
+              ? "Dark mode"
+              : "Light mode"}
           </span>
 
           <span className="dot" />

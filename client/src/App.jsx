@@ -84,8 +84,7 @@ function LoadingScreen({ text }) {
 }
 
 export default function App() {
-  const { user: firebaseUser, authLoading } =
-    useAuth();
+  const { user: firebaseUser, authLoading } = useAuth();
 
   const [route, setRoute] = useState(getRoute);
   const [user, setUser] = useState(null);
@@ -94,7 +93,32 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("omx_theme");
+
+    return savedTheme === "light"
+      ? "light"
+      : "dark";
+  });
+
   const screen = route.screen;
+
+  useEffect(() => {
+    localStorage.setItem("omx_theme", theme);
+
+    document.documentElement.dataset.theme =
+      theme;
+
+    document.body.dataset.theme = theme;
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((currentTheme) =>
+      currentTheme === "dark"
+        ? "light"
+        : "dark"
+    );
+  }, []);
 
   const navigate = useCallback((path) => {
     window.history.pushState({}, "", path);
@@ -151,12 +175,11 @@ export default function App() {
             }, 15000);
           });
 
-        const dataPromise =
-          Promise.all([
-            api.getMe(),
-            api.getMarkets(),
-            api.getPosts(),
-          ]);
+        const dataPromise = Promise.all([
+          api.getMe(),
+          api.getMarkets(),
+          api.getPosts(),
+        ]);
 
         const [me, marketData, postData] =
           await Promise.race([
@@ -195,8 +218,8 @@ export default function App() {
     };
   }, [authLoading, firebaseUser]);
 
-  const refreshMarkets =
-    useCallback(async () => {
+  const refreshMarkets = useCallback(
+    async () => {
       try {
         const data = await api.getMarkets();
         setMarkets(data);
@@ -206,10 +229,12 @@ export default function App() {
           error
         );
       }
-    }, []);
+    },
+    []
+  );
 
-  const refreshPosts =
-    useCallback(async () => {
+  const refreshPosts = useCallback(
+    async () => {
       try {
         const data = await api.getPosts();
         setPosts(data);
@@ -219,12 +244,16 @@ export default function App() {
           error
         );
       }
-    }, []);
+    },
+    []
+  );
 
-  const handleUserUpdated =
-    useCallback((updatedUser) => {
+  const handleUserUpdated = useCallback(
+    (updatedUser) => {
       setUser(updatedUser);
-    }, []);
+    },
+    []
+  );
 
   const handleTrade = useCallback(
     async (tradeData) => {
@@ -248,23 +277,21 @@ export default function App() {
     [refreshMarkets]
   );
 
-  const handleCreatePost =
-    useCallback(
-      async (content) => {
-        await api.createPost({ content });
-        await refreshPosts();
-      },
-      [refreshPosts]
-    );
+  const handleCreatePost = useCallback(
+    async (content) => {
+      await api.createPost({ content });
+      await refreshPosts();
+    },
+    [refreshPosts]
+  );
 
-  const handleLikePost =
-    useCallback(
-      async (postId) => {
-        await api.likePost(postId);
-        await refreshPosts();
-      },
-      [refreshPosts]
-    );
+  const handleLikePost = useCallback(
+    async (postId) => {
+      await api.likePost(postId);
+      await refreshPosts();
+    },
+    [refreshPosts]
+  );
 
   if (authLoading) {
     return (
@@ -327,8 +354,7 @@ export default function App() {
     onTrade: handleTrade,
     onCreatePost: handleCreatePost,
     onLikePost: handleLikePost,
-    onUserUpdated:
-      handleUserUpdated,
+    onUserUpdated: handleUserUpdated,
   };
 
   let page;
@@ -393,14 +419,14 @@ export default function App() {
 
     case "notifications":
       page = (
-        <Notifications {...commonProps} />
+        <Notifications
+          {...commonProps}
+        />
       );
       break;
 
     case "messages":
-      page = (
-        <Messages {...commonProps} />
-      );
+      page = <Messages {...commonProps} />;
       break;
 
     case "home":
@@ -413,12 +439,14 @@ export default function App() {
     <>
       <Ticker markets={markets} />
 
-      <div className="shell">
+      <div
+        className={`shell theme-${theme}`}
+      >
         <Sidebar
           screen={screen}
           navigate={navigate}
-          theme="dark"
-          toggleTheme={() => {}}
+          theme={theme}
+          toggleTheme={toggleTheme}
           isPro={false}
         />
 

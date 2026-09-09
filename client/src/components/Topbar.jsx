@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase";
 
 function SearchIcon() {
   return (
@@ -61,7 +63,7 @@ export default function Topbar({
 
     const timer = setTimeout(() => {
       setModeBanner("");
-    }, 1500);
+    }, 1300);
 
     return () => clearTimeout(timer);
   }, [modeBanner]);
@@ -84,6 +86,15 @@ export default function Topbar({
         ? "Demo mode toggled"
         : "Real mode toggled"
     );
+  }
+
+  async function handleLogout() {
+    try {
+      setOpen(null);
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   }
 
   const initials =
@@ -291,6 +302,7 @@ export default function Topbar({
                   style={{
                     color: "var(--negative)",
                   }}
+                  onClick={handleLogout}
                 >
                   <span className="ic">
                     ✕
