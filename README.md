@@ -108,6 +108,9 @@ live prices/percentages — because a dedicated numeric face is a real,
 low-cost signal of "trading terminal" credibility that a single generic font
 can't produce. Kept as-is; no change made here.
 
+## NOTE 
+While logging in, forgot password change notifications might be in the spam folder of the mail. Please check accordingly.
+
 ## OmniMarketX (this build) vs. the original site — what's different and why
 
 | Area | Original site | This build | Why it's better |
