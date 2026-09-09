@@ -28,23 +28,6 @@ server/   Express API + MongoDB models (Node, ESM)
 client/   React + Vite frontend (same CSS/design, no visual changes)
 ```
 
-## Pushing to GitHub with a clean commit history
-`init-git-history.sh` at the project root builds a sensible, logically-grouped
-commit history (backend scaffold → frontend scaffold → components → core
-trading flow → remaining pages → beginner features → Pro page → carousel →
-bug fixes → docs) instead of one giant initial commit. It uses your local
-git identity — nothing else is attached to these commits.
-
-```bash
-chmod +x init-git-history.sh   # first time only
-./init-git-history.sh
-git remote add origin <your-github-repo-url>
-git push -u origin main
-```
-
-Run this once, right after extracting the zip, before creating the GitHub
-repo connection.
-
 ## Prerequisites
 - Node.js 18+
 - MongoDB running locally (or an Atlas connection string)
