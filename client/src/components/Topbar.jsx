@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function SearchIcon() {
   return (
@@ -54,6 +54,17 @@ export default function Topbar({
 }) {
   const [open, setOpen] = useState(null);
   const [currentMode, setCurrentMode] = useState("real");
+  const [modeBanner, setModeBanner] = useState("");
+
+  useEffect(() => {
+    if (!modeBanner) return;
+
+    const timer = setTimeout(() => {
+      setModeBanner("");
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [modeBanner]);
 
   function handleNavigate(path) {
     setOpen(null);
@@ -64,7 +75,15 @@ export default function Topbar({
   }
 
   function handleModeChange(mode) {
+    if (mode === currentMode) return;
+
     setCurrentMode(mode);
+
+    setModeBanner(
+      mode === "demo"
+        ? "Demo mode toggled"
+        : "Real mode toggled"
+    );
   }
 
   const initials =
@@ -77,153 +96,212 @@ export default function Topbar({
       .toUpperCase() || "SS";
 
   return (
-    <div
-      className="topbar"
-      onClick={() => setOpen(null)}
-    >
-      <div className="search">
-        <SearchIcon />
-        <span>Search markets, events, users</span>
-      </div>
+    <>
+      {modeBanner && (
+        <div
+          style={{
+            position: "fixed",
+            top: "72px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            padding: "10px 18px",
+            borderRadius: "12px",
+            background:
+              "linear-gradient(135deg, rgba(255,62,127,0.96), rgba(123,95,255,0.96))",
+            color: "#fff",
+            fontSize: "13px",
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+            boxShadow:
+              "0 10px 30px rgba(0,0,0,0.3)",
+            pointerEvents: "none",
+            animation:
+              "omxModeBannerIn 0.18s ease-out",
+          }}
+        >
+          {modeBanner}
+        </div>
+      )}
 
-      <div className="topbar-right">
-        <div className="mode-pill">
-          <span
-            className={currentMode === "real" ? "on" : ""}
-            onClick={(event) => {
-              event.stopPropagation();
-              handleModeChange("real");
-            }}
-          >
-            Real
-          </span>
+      <style>
+        {`
+          @keyframes omxModeBannerIn {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(-8px);
+            }
 
-          <span
-            className={currentMode === "demo" ? "on" : ""}
-            onClick={(event) => {
-              event.stopPropagation();
-              handleModeChange("demo");
-            }}
-          >
-            Demo
-          </span>
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
+        `}
+      </style>
+
+      <div
+        className="topbar"
+        onClick={() => setOpen(null)}
+      >
+        <div className="search">
+          <SearchIcon />
+          <span>Search markets, events, users</span>
         </div>
 
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Messages"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleNavigate("/messages");
-          }}
-        >
-          <MessageIcon />
-        </button>
+        <div className="topbar-right">
+          <div className="mode-pill">
+            <span
+              className={
+                currentMode === "real" ? "on" : ""
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                handleModeChange("real");
+              }}
+            >
+              Real
+            </span>
 
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Notifications"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleNavigate("/notifications");
-          }}
-        >
-          <NotificationIcon />
-        </button>
+            <span
+              className={
+                currentMode === "demo" ? "on" : ""
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                handleModeChange("demo");
+              }}
+            >
+              Demo
+            </span>
+          </div>
 
-        <div className="dd-wrap">
           <button
             type="button"
-            className="avatar"
-            aria-label="Account menu"
+            className="icon-btn"
+            aria-label="Messages"
             onClick={(event) => {
               event.stopPropagation();
-
-              setOpen(
-                open === "avatar"
-                  ? null
-                  : "avatar"
-              );
+              handleNavigate("/messages");
             }}
           >
-            {initials}
+            <MessageIcon />
           </button>
 
-          <div
-            className={
-              "dd-panel wide" +
-              (open === "avatar" ? "" : " hidden")
-            }
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Notifications"
+            onClick={(event) => {
+              event.stopPropagation();
+              handleNavigate("/notifications");
+            }}
           >
-            <div className="dd-header">
-              <div className="avatar">
-                {initials}
-              </div>
+            <NotificationIcon />
+          </button>
 
-              <div>
-                <div className="name">
-                  {user?.displayName ||
-                    "OmniMarketX User"}
+          <div className="dd-wrap">
+            <button
+              type="button"
+              className="avatar"
+              aria-label="Account menu"
+              onClick={(event) => {
+                event.stopPropagation();
+
+                setOpen(
+                  open === "avatar"
+                    ? null
+                    : "avatar"
+                );
+              }}
+            >
+              {initials}
+            </button>
+
+            <div
+              className={
+                "dd-panel wide" +
+                (open === "avatar"
+                  ? ""
+                  : " hidden")
+              }
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+              <div className="dd-header">
+                <div className="avatar">
+                  {initials}
                 </div>
 
-                <div className="handle">
-                  omnimarketx.com/u/
-                  {user?.username || "user"}
+                <div>
+                  <div className="name">
+                    {user?.displayName ||
+                      "OmniMarketX User"}
+                  </div>
+
+                  <div className="handle">
+                    omnimarketx.com/u/
+                    {user?.username || "user"}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="dd-body">
-              <div
-                className="dd-item"
-                onClick={() =>
-                  handleNavigate("/profile")
-                }
-              >
-                <span className="ic">👤</span>
-                View Profile
-              </div>
+              <div className="dd-body">
+                <div
+                  className="dd-item"
+                  onClick={() =>
+                    handleNavigate("/profile")
+                  }
+                >
+                  <span className="ic">
+                    👤
+                  </span>
+                  View Profile
+                </div>
 
-              <div
-                className="dd-item"
-                onClick={() =>
-                  handleNavigate("/wallet")
-                }
-              >
-                <span className="ic">💳</span>
-                Deposit
-              </div>
+                <div
+                  className="dd-item"
+                  onClick={() =>
+                    handleNavigate("/wallet")
+                  }
+                >
+                  <span className="ic">
+                    💳
+                  </span>
+                  Deposit
+                </div>
 
-              <div
-                className="dd-item"
-                onClick={() =>
-                  handleNavigate("/settings")
-                }
-              >
-                <span className="ic">⚙️</span>
-                Settings
-              </div>
+                <div
+                  className="dd-item"
+                  onClick={() =>
+                    handleNavigate("/settings")
+                  }
+                >
+                  <span className="ic">
+                    ⚙️
+                  </span>
+                  Settings
+                </div>
 
-              <div className="dd-divider" />
+                <div className="dd-divider" />
 
-              <div
-                className="dd-item danger"
-                style={{
-                  color: "var(--negative)",
-                }}
-              >
-                <span className="ic">✕</span>
-                Log Out
+                <div
+                  className="dd-item danger"
+                  style={{
+                    color: "var(--negative)",
+                  }}
+                >
+                  <span className="ic">
+                    ✕
+                  </span>
+                  Log Out
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
