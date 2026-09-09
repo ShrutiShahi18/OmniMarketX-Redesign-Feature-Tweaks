@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import "../styles/social.css";
 
@@ -65,6 +65,9 @@ function CommentItem({
   const [replyText, setReplyText] =
     useState("");
 
+  const [submittingReply, setSubmittingReply] =
+    useState(false);
+
   const authorName =
     comment.user?.displayName ||
     "OmniMarketX User";
@@ -95,9 +98,16 @@ function CommentItem({
     const cleanReply =
       replyText.trim();
 
-    if (!cleanReply) return;
+    if (
+      !cleanReply ||
+      submittingReply
+    ) {
+      return;
+    }
 
     try {
+      setSubmittingReply(true);
+
       const updated =
         await api.createComment(
           postId,
@@ -108,15 +118,25 @@ function CommentItem({
           }
         );
 
+      /*
+       * The API returns the complete
+       * updated post. Pass it upward
+       * immediately so the reply appears
+       * without waiting for a second request.
+       */
+      if (updated) {
+        onReply(updated);
+      }
+
       setReplyText("");
       setReplyOpen(false);
-
-      onReply(updated);
     } catch (error) {
       console.error(
         "Reply error:",
         error
       );
+    } finally {
+      setSubmittingReply(false);
     }
   }
 
@@ -186,7 +206,9 @@ function CommentItem({
                   ? "comment-liked"
                   : ""
               }
-              onClick={toggleLike}
+              onClick={
+                toggleLike
+              }
             >
               {comment.liked
                 ? "❤️"
@@ -198,7 +220,8 @@ function CommentItem({
               type="button"
               onClick={() =>
                 setReplyOpen(
-                  (current) => !current
+                  (current) =>
+                    !current
                 )
               }
             >
@@ -233,11 +256,15 @@ function CommentItem({
                     event.key ===
                     "Enter"
                   ) {
+                    event.preventDefault();
                     submitReply();
                   }
                 }}
                 placeholder="Write a reply..."
                 autoFocus
+                disabled={
+                  submittingReply
+                }
               />
 
               <button
@@ -245,8 +272,14 @@ function CommentItem({
                 onClick={
                   submitReply
                 }
+                disabled={
+                  !replyText.trim() ||
+                  submittingReply
+                }
               >
-                Reply
+                {submittingReply
+                  ? "Replying..."
+                  : "Reply"}
               </button>
             </div>
           )}
@@ -274,6 +307,17 @@ export default function Social({
   const [toast, setToast] =
     useState("");
 
+  /*
+   * Keep a local copy so interactions can
+   * update the UI immediately.
+   */
+  const [displayPosts, setDisplayPosts] =
+    useState(posts);
+
+  useEffect(() => {
+    setDisplayPosts(posts);
+  }, [posts]);
+
   function showToast(message) {
     setToast(message);
 
@@ -285,6 +329,37 @@ export default function Social({
       window.setTimeout(() => {
         setToast("");
       }, 1800);
+  }
+
+  function applyUpdatedPost(updatedPost) {
+    if (!updatedPost?._id) {
+      return;
+    }
+
+    setDisplayPosts(
+      (currentPosts) =>
+        currentPosts.map((post) =>
+          post._id ===
+          updatedPost._id
+            ? updatedPost
+            : post
+        )
+    );
+  }
+
+  async function syncPosts() {
+    if (!refreshPosts) {
+      return;
+    }
+
+    try {
+      await refreshPosts();
+    } catch (error) {
+      console.error(
+        "Refresh posts error:",
+        error
+      );
+    }
   }
 
   async function submitPost() {
@@ -308,9 +383,7 @@ export default function Social({
           content: cleanText,
         });
 
-        if (refreshPosts) {
-          await refreshPosts();
-        }
+        await syncPosts();
       }
 
       setText("");
@@ -333,13 +406,20 @@ export default function Social({
 
   async function likePost(post) {
     try {
-      await api.likePost(
-        post._id
-      );
+      const updated =
+        await api.likePost(
+          post._id
+        );
 
-      if (refreshPosts) {
-        await refreshPosts();
+      /*
+       * If the backend returns the
+       * updated post, update instantly.
+       */
+      if (updated?._id) {
+        applyUpdatedPost(updated);
       }
+
+      await syncPosts();
     } catch (error) {
       console.error(
         "Like error:",
@@ -374,16 +454,27 @@ export default function Social({
     }
 
     try {
-      await api.createComment(
-        postId,
-        {
-          text: cleanText,
-        }
-      );
+      const updated =
+        await api.createComment(
+          postId,
+          {
+            text: cleanText,
+          }
+        );
 
-      if (refreshPosts) {
-        await refreshPosts();
+      /*
+       * Update immediately with the
+       * complete post returned by the API.
+       */
+      if (updated?._id) {
+        applyUpdatedPost(updated);
       }
+
+      /*
+       * Then sync with MongoDB so the
+       * displayed state stays authoritative.
+       */
+      await syncPosts();
     } catch (error) {
       console.error(
         "Comment error:",
@@ -395,6 +486,36 @@ export default function Social({
           "Couldn't add comment."
       );
     }
+  }
+
+  async function handleCommentUpdated(
+    updatedPost
+  ) {
+    if (updatedPost?._id) {
+      applyUpdatedPost(
+        updatedPost
+      );
+    }
+
+    await syncPosts();
+  }
+
+  async function handleReply(
+    updatedPost
+  ) {
+    /*
+     * This is the important fix:
+     * immediately replace the post with
+     * the API response containing the new
+     * reply, then refresh in the background.
+     */
+    if (updatedPost?._id) {
+      applyUpdatedPost(
+        updatedPost
+      );
+    }
+
+    await syncPosts();
   }
 
   async function sharePost(post) {
@@ -420,7 +541,9 @@ export default function Social({
     }
   }
 
-  let shownPosts = [...posts];
+  let shownPosts = [
+    ...displayPosts,
+  ];
 
   if (tab === "Top") {
     shownPosts.sort(
@@ -433,8 +556,12 @@ export default function Social({
   if (tab === "Latest") {
     shownPosts.sort(
       (a, b) =>
-        new Date(b.createdAt) -
-        new Date(a.createdAt)
+        new Date(
+          b.createdAt
+        ) -
+        new Date(
+          a.createdAt
+        )
     );
   }
 
@@ -551,6 +678,17 @@ export default function Social({
               !!openComments[
                 post._id
               ];
+
+            /*
+             * Keep the comment hierarchy
+             * robust even if MongoDB returns
+             * ObjectIds as strings.
+             */
+            const rootComments =
+              comments.filter(
+                (comment) =>
+                  !comment.parentComment
+              );
 
             return (
               <article
@@ -690,7 +828,7 @@ export default function Social({
                     />
 
                     {comments.length ===
-                      0 ? (
+                    0 ? (
                       <div className="social-comments-empty">
                         No comments yet.
                         Be the first to
@@ -698,79 +836,76 @@ export default function Social({
                       </div>
                     ) : (
                       <div className="social-comments-list">
-                        {comments
-                          .filter(
-                            (comment) =>
-                              !comment.parentComment
-                          )
-                          .map(
-                            (
-                              comment
-                            ) => (
-                              <div
-                                key={
-                                  comment._id
+                        {rootComments.map(
+                          (comment) => (
+                            <div
+                              key={
+                                comment._id
+                              }
+                            >
+                              <CommentItem
+                                comment={
+                                  comment
                                 }
-                              >
-                                <CommentItem
-                                  comment={
-                                    comment
-                                  }
-                                  postId={
-                                    post._id
-                                  }
-                                  currentUser={
-                                    user
-                                  }
-                                  onUpdated={() =>
-                                    refreshPosts?.()
-                                  }
-                                  onReply={() =>
-                                    refreshPosts?.()
-                                  }
-                                />
+                                postId={
+                                  post._id
+                                }
+                                currentUser={
+                                  user
+                                }
+                                onUpdated={
+                                  handleCommentUpdated
+                                }
+                                onReply={
+                                  handleReply
+                                }
+                              />
 
-                                {comments
-                                  .filter(
-                                    (
-                                      reply
-                                    ) =>
-                                      reply.parentComment ===
+                              {comments
+                                .filter(
+                                  (
+                                    reply
+                                  ) =>
+                                    String(
+                                      reply.parentComment
+                                    ) ===
+                                    String(
                                       comment._id
-                                  )
-                                  .map(
-                                    (
-                                      reply
-                                    ) => (
-                                      <div
-                                        className="social-comment-reply"
-                                        key={
-                                          reply._id
-                                        }
-                                      >
-                                        <CommentItem
-                                          comment={
-                                            reply
-                                          }
-                                          postId={
-                                            post._id
-                                          }
-                                          currentUser={
-                                            user
-                                          }
-                                          onUpdated={() =>
-                                            refreshPosts?.()
-                                          }
-                                          onReply={() =>
-                                            refreshPosts?.()
-                                          }
-                                        />
-                                      </div>
                                     )
-                                  )}
-                              </div>
-                            )
-                          )}
+                                )
+                                .map(
+                                  (
+                                    reply
+                                  ) => (
+                                    <div
+                                      className="social-comment-reply"
+                                      key={
+                                        reply._id
+                                      }
+                                    >
+                                      <CommentItem
+                                        comment={
+                                          reply
+                                        }
+                                        postId={
+                                          post._id
+                                        }
+                                        currentUser={
+                                          user
+                                        }
+                                        onUpdated={
+                                          handleCommentUpdated
+                                        }
+                                        onReply={
+                                          handleReply
+                                        }
+                                      />
+                                    </div>
+                                  )
+                                )}
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -839,14 +974,36 @@ function CommentComposer({
   const [text, setText] =
     useState("");
 
-  function submit() {
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  async function submit() {
     const cleanText =
       text.trim();
 
-    if (!cleanText) return;
+    if (
+      !cleanText ||
+      submitting
+    ) {
+      return;
+    }
 
-    onSubmit(cleanText);
-    setText("");
+    try {
+      setSubmitting(true);
+
+      /*
+       * Await the parent handler so the
+       * comment isn't cleared before the
+       * request/update finishes.
+       */
+      await onSubmit(
+        cleanText
+      );
+
+      setText("");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -858,26 +1015,35 @@ function CommentComposer({
       <input
         value={text}
         onChange={(event) =>
-          setText(event.target.value)
+          setText(
+            event.target.value
+          )
         }
         onKeyDown={(event) => {
           if (
             event.key ===
             "Enter"
           ) {
+            event.preventDefault();
             submit();
           }
         }}
         placeholder="Write a comment..."
         maxLength={1000}
+        disabled={submitting}
       />
 
       <button
         type="button"
         onClick={submit}
-        disabled={!text.trim()}
+        disabled={
+          !text.trim() ||
+          submitting
+        }
       >
-        Comment
+        {submitting
+          ? "Posting..."
+          : "Comment"}
       </button>
     </div>
   );

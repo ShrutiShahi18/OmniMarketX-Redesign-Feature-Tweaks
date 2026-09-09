@@ -40,27 +40,32 @@ function SettingsIcon() {
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="3" />
+
       <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.7 1.7-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.4v-.2a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.7-1.7.06-.06A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.4h.84A1.7 1.7 0 0 0 8.4 10a1.7 1.7 0 0 0-.34-1.88L8 8.06l1.7-1.7.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 12.67 5.2V5h2.4v.2a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.7 1.7-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.9 11H21v2.4h-.1A1.7 1.7 0 0 0 19.4 15Z" />
     </svg>
   );
 }
 
-export default function Notifications({ setScreen }) {
-  const [activeTab, setActiveTab] = useState("All");
+export default function Notifications({
+  navigate,
+}) {
+  const [activeTab, setActiveTab] =
+    useState("All");
 
-  const goToSettings = () => {
-    if (setScreen) {
-      setScreen("settings");
-    }
-  };
+  function goToSettings() {
+    navigate("/settings");
+  }
 
   return (
     <div className="notifications-page">
       <div className="notifications-heading">
-        <h1 className="page-title">Notifications</h1>
+        <h1 className="page-title">
+          Notifications
+        </h1>
 
         <p className="page-sub">
-          Stay on top of your trades, rewards, and social activity.
+          Stay on top of your trades, rewards,
+          and social activity.
         </p>
       </div>
 
@@ -75,11 +80,17 @@ export default function Notifications({ setScreen }) {
             type="button"
             className={
               "notifications-tab" +
-              (activeTab === tab ? " active" : "")
+              (activeTab === tab
+                ? " active"
+                : "")
             }
-            onClick={() => setActiveTab(tab)}
+            onClick={() =>
+              setActiveTab(tab)
+            }
             role="tab"
-            aria-selected={activeTab === tab}
+            aria-selected={
+              activeTab === tab
+            }
           >
             {tab}
           </button>
@@ -93,35 +104,61 @@ export default function Notifications({ setScreen }) {
               <BellIcon />
             </div>
 
-            <h2>No notifications here</h2>
+            <h2>
+              No notifications here
+            </h2>
 
-            <p>Check back later for updates.</p>
+            <p>
+              Check back later for updates.
+            </p>
           </section>
         </main>
 
         <aside className="notifications-sidebar">
           <section className="notifications-card">
-            <h2>Notification Summary</h2>
+            <h2>
+              Notification Summary
+            </h2>
 
             <div className="notifications-summary-list">
               <div className="notifications-summary-row">
-                <span>Unread</span>
-                <strong>0</strong>
+                <span>
+                  Unread
+                </span>
+
+                <strong>
+                  0
+                </strong>
               </div>
 
               <div className="notifications-summary-row">
-                <span>Trades</span>
-                <strong>0</strong>
+                <span>
+                  Trades
+                </span>
+
+                <strong>
+                  0
+                </strong>
               </div>
 
               <div className="notifications-summary-row">
-                <span>Social</span>
-                <strong>0</strong>
+                <span>
+                  Social
+                </span>
+
+                <strong>
+                  0
+                </strong>
               </div>
 
               <div className="notifications-summary-row">
-                <span>System</span>
-                <strong>0</strong>
+                <span>
+                  System
+                </span>
+
+                <strong>
+                  0
+                </strong>
               </div>
             </div>
           </section>
@@ -134,17 +171,23 @@ export default function Notifications({ setScreen }) {
             </h2>
 
             <p>
-              Choose which alerts you receive by push,
-              email, or SMS in Settings.
+              Choose which alerts you receive
+              by push, email, or SMS in
+              Settings.
             </p>
 
             <button
               type="button"
               className="notifications-settings-button"
-              onClick={goToSettings}
+              onClick={
+                goToSettings
+              }
             >
               <SettingsIcon />
-              <span>Settings</span>
+
+              <span>
+                Settings
+              </span>
             </button>
           </section>
         </aside>

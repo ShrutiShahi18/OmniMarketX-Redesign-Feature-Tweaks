@@ -52,12 +52,17 @@ export default function Topbar({
   user,
   mode,
   setMode,
-  setScreen,
+  navigate,
 }) {
   const [open, setOpen] = useState(null);
 
   function handleNavigate(path) {
     setOpen(null);
+
+    if (navigate) {
+      navigate(path);
+      return;
+    }
 
     window.history.pushState({}, "", path);
 
@@ -90,11 +95,14 @@ export default function Topbar({
           className="mode-pill"
           onClick={(e) => {
             e.stopPropagation();
-            setMode(
-              mode === "demo"
-                ? "real"
-                : "demo"
-            );
+
+            if (setMode) {
+              setMode(
+                mode === "demo"
+                  ? "real"
+                  : "demo"
+              );
+            }
           }}
         >
           <span className={mode === "real" ? "on" : ""}>
@@ -137,6 +145,7 @@ export default function Topbar({
             aria-label="Account menu"
             onClick={(e) => {
               e.stopPropagation();
+
               setOpen(
                 open === "avatar"
                   ? null
@@ -204,13 +213,9 @@ export default function Topbar({
 
               <div
                 className="dd-item"
-                onClick={() => {
-                  setOpen(null);
-
-                  if (setScreen) {
-                    setScreen("settings");
-                  }
-                }}
+                onClick={() =>
+                  handleNavigate("/settings")
+                }
               >
                 <span className="ic">
                   ⚙️

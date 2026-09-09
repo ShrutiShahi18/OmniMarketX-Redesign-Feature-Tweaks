@@ -63,7 +63,7 @@ export default function Settings({ user, onUserUpdated }) {
 
             setTimeout(() => {
                 setMessage("");
-            }, 2000);
+            }, 1300);
         } catch (err) {
             console.error("Failed to update profile:", err);
             setError(err.message || "Failed to update profile.");
