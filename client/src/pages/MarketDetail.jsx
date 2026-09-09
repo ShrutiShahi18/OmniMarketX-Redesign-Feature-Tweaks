@@ -664,21 +664,76 @@ export default function MarketDetail({
       )}
 
       {toastMsg && (
-        <div className="toast-wrap show">
-          <div className="toast">
-            <div className="toast-icon">
+        <div
+          style={{
+            position: "fixed",
+            top: "72px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10000,
+            width: "min(680px, calc(100vw - 32px))",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 18px",
+              borderRadius: "12px",
+              border: "1px solid var(--border-strong)",
+              background:
+                "linear-gradient(135deg, var(--surface-2), var(--surface-3))",
+              boxShadow:
+                "0 14px 40px rgba(0, 0, 0, 0.35)",
+            }}
+          >
+            <div
+              style={{
+                width: "30px",
+                height: "30px",
+                minWidth: "30px",
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                background: "var(--positive)",
+                color: "#08110d",
+                fontWeight: 800,
+                fontSize: "15px",
+              }}
+            >
               ✓
             </div>
 
-            <div>
-              <div className="toast-title">
+            <div
+              style={{
+                minWidth: 0,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  color: "var(--text-primary)",
+                  marginBottom: "2px",
+                }}
+              >
                 Posted to feed
               </div>
 
-              <div className="toast-preview">
-                {toastMsg.length > 60
-                  ? toastMsg.slice(0, 60) +
-                    "…"
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {toastMsg.length > 90
+                  ? toastMsg.slice(0, 90) + "…"
                   : toastMsg}
               </div>
             </div>
