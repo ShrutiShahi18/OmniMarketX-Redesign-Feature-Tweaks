@@ -1,36 +1,131 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../api";
 
-const TABS = ["All", "Trades", "Markets", "Social", "Alerts", "Achievements"];
+export default function Activity({ navigate }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-export default function Activity({ history }) {
-  const [tab, setTab] = useState("All");
+  async function loadActivity() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await api.getHistory();
+      setHistory(data);
+    } catch (err) {
+      console.error("Failed to load activity:", err);
+      setError(err.message || "Failed to load activity");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadActivity();
+  }, []);
+
   return (
-    <div>
-      <h1 className="page-title">Activity</h1>
-      <p className="page-sub">Everything happening across OmniMarketX.</p>
-      <div className="chips">
-        {TABS.map((t) => <div key={t} className={"chip" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</div>)}
+    <section className="page-section">
+      <div className="page-header">
+        <div>
+          <h1>Activity</h1>
+          <p>Keep track of your recent trading activity.</p>
+        </div>
+
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => navigate("/markets")}
+        >
+          Explore Markets
+        </button>
       </div>
-      <div className="stat-strip" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
-        <div className="stat-card"><div className="l">Live Trades</div><div className="v">{history.length}</div></div>
-        <div className="stat-card"><div className="l">Volume Moved</div><div className="v">${history.reduce((s, t) => s + t.amount, 0).toFixed(0)}</div></div>
-        <div className="stat-card"><div className="l">Markets Moved</div><div className="v">{new Set(history.map((t) => t.market?._id)).size}</div></div>
-        <div className="stat-card"><div className="l">Active Traders</div><div className="v">{history.length > 0 ? 1 : 0}</div></div>
-      </div>
-      {history.length === 0 ? (
-        <div className="side-card" style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)", fontSize: 13 }}>No activity yet — trades and social actions will show up here in real time.</div>
+
+      {loading ? (
+        <div className="card">
+          <div className="empty-state">
+            Loading activity...
+          </div>
+        </div>
+      ) : error ? (
+        <div className="card">
+          <div className="empty-state">
+            <strong>Couldn't load activity</strong>
+            <p>{error}</p>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadActivity}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : history.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <strong>No activity yet</strong>
+            <p>
+              Your trades and other market activity will appear
+              here.
+            </p>
+          </div>
+        </div>
       ) : (
-        <div className="side-card" style={{ padding: "6px 8px" }}>
-          <table className="ptable">
-            <tbody>
-              <tr><th>Side</th><th>Market</th><th>Amount</th><th>Date</th></tr>
-              {history.map((t) => (
-                <tr key={t._id}><td><span className="pos-tag">{t.mode.toUpperCase()}</span></td><td>{t.market?.question?.slice(0, 40)}…</td><td className="num">{t.amount.toFixed(2)} USDC</td><td className="num" style={{ color: "var(--text-tertiary)" }}>{new Date(t.createdAt).toLocaleDateString()}</td></tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h2>Recent Activity</h2>
+              <p>Your latest trades.</p>
+            </div>
+          </div>
+
+          <div className="activity-list">
+            {history.map((trade) => (
+              <div
+                className="activity-item"
+                key={trade._id}
+              >
+                <div className="activity-icon">
+                  {trade.mode === "buy" ? "↗" : "↘"}
+                </div>
+
+                <div className="activity-content">
+                  <strong>
+                    {trade.mode === "buy"
+                      ? "Bought"
+                      : "Sold"}{" "}
+                    {trade.side?.toUpperCase()} shares
+                  </strong>
+
+                  <span>
+                    {trade.market?.question ||
+                      "Unknown market"}
+                  </span>
+
+                  <small>
+                    {trade.createdAt
+                      ? new Date(
+                          trade.createdAt
+                        ).toLocaleString()
+                      : ""}
+                  </small>
+                </div>
+
+                <div className="activity-value">
+                  <strong>
+                    {Number(trade.total || 0).toFixed(2)}
+                  </strong>
+
+                  <span>USDC</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -3,68 +3,205 @@ import mongoose from "mongoose";
 import Trade from "../models/Trade.js";
 import Market from "../models/Market.js";
 import User from "../models/User.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// POST /api/trades  { userId, marketId, side, mode, amount }
-// Server computes shares/fee/total and is the single source of truth for balance changes.
-router.post("/", async (req, res) => {
+// POST /api/trades
+// The authenticated Firebase user determines which MongoDB user owns the trade.
+router.post("/", requireAuth, async (req, res) => {
   try {
-    const { userId, marketId, side, mode, amount } = req.body;
-    if (!userId || !marketId || !side || !mode || !amount) {
-      return res.status(400).json({ error: "Missing required fields" });
+    const { marketId, side, mode, amount } = req.body;
+
+    if (!marketId || !side || !mode || !amount) {
+      return res.status(400).json({
+        error: "Missing required fields",
+      });
     }
+
+    const numericAmount = Number(amount);
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({
+        error: "Amount must be greater than zero",
+      });
+    }
+
+    if (!["yes", "no"].includes(side)) {
+      return res.status(400).json({
+        error: "Invalid trade side",
+      });
+    }
+
+    if (!["buy", "sell"].includes(mode)) {
+      return res.status(400).json({
+        error: "Invalid trade mode",
+      });
+    }
+
     const market = await Market.findById(marketId);
-    const user = await User.findById(userId);
-    if (!market || !user) return res.status(404).json({ error: "Market or user not found" });
+
+    if (!market) {
+      return res.status(404).json({
+        error: "Market not found",
+      });
+    }
+
+    const user = await User.findOne({
+      firebaseUid: req.firebaseUser.uid,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
 
     const price = side === "yes" ? market.yesPrice : market.noPrice;
-    const fee = +(amount * 0.002).toFixed(2);
-    const shares = +(amount / price).toFixed(2);
-    const total = mode === "buy" ? +(amount + fee).toFixed(2) : +(amount - fee).toFixed(2);
+
+    if (!price || price <= 0) {
+      return res.status(400).json({
+        error: "Market price is unavailable",
+      });
+    }
+
+    const fee = +(numericAmount * 0.002).toFixed(2);
+    const shares = +(numericAmount / price).toFixed(2);
+
+    const total =
+      mode === "buy"
+        ? +(numericAmount + fee).toFixed(2)
+        : +(numericAmount - fee).toFixed(2);
 
     if (mode === "buy" && user.demoBalance < total) {
-      return res.status(400).json({ error: "Insufficient demo balance" });
+      return res.status(400).json({
+        error: "Insufficient demo balance",
+      });
     }
 
-    user.demoBalance = mode === "buy" ? +(user.demoBalance - total).toFixed(2) : +(user.demoBalance + total).toFixed(2);
+    if (mode === "sell" && user.demoBalance + total < 0) {
+      return res.status(400).json({
+        error: "Invalid sell amount",
+      });
+    }
+
+    user.demoBalance =
+      mode === "buy"
+        ? +(user.demoBalance - total).toFixed(2)
+        : +(user.demoBalance + total).toFixed(2);
+
     await user.save();
 
-    const txId = new mongoose.Types.ObjectId().toString().slice(-12);
-    const trade = await Trade.create({ user: userId, market: marketId, side, mode, amount, price, shares, fee, total, txId });
+    const txId = new mongoose.Types.ObjectId()
+      .toString()
+      .slice(-12);
 
-    res.json({ trade, newBalance: user.demoBalance });
+    const trade = await Trade.create({
+      user: user._id,
+      market: market._id,
+      side,
+      mode,
+      amount: numericAmount,
+      price,
+      shares,
+      fee,
+      total,
+      txId,
+    });
+
+    res.json({
+      trade,
+      newBalance: user.demoBalance,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Trade error:", err);
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
-// GET /api/trades/history/:userId  -> wallet trade history
-router.get("/history/:userId", async (req, res) => {
+// GET /api/trades/history
+router.get("/history", requireAuth, async (req, res) => {
   try {
-    const trades = await Trade.find({ user: req.params.userId }).sort({ createdAt: -1 }).populate("market", "question category");
+    const user = await User.findOne({
+      firebaseUid: req.firebaseUser.uid,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    const trades = await Trade.find({
+      user: user._id,
+    })
+      .sort({ createdAt: -1 })
+      .populate("market", "question category");
+
     res.json(trades);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Trade history error:", err);
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
-// GET /api/trades/positions/:userId -> portfolio, grouped by market+side
-router.get("/positions/:userId", async (req, res) => {
+// GET /api/trades/positions
+router.get("/positions", requireAuth, async (req, res) => {
   try {
-    const trades = await Trade.find({ user: req.params.userId }).populate("market", "question category icon yesPrice noPrice");
-    const grouped = {};
-    for (const t of trades) {
-      const key = t.market._id + "-" + t.side;
-      if (!grouped[key]) grouped[key] = { market: t.market, side: t.side, shares: 0, costBasis: 0 };
-      const sign = t.mode === "buy" ? 1 : -1;
-      grouped[key].shares += sign * t.shares;
-      grouped[key].costBasis += sign * t.amount;
+    const user = await User.findOne({
+      firebaseUid: req.firebaseUser.uid,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+      });
     }
-    const positions = Object.values(grouped).filter((p) => p.shares > 0.01);
+
+    const trades = await Trade.find({
+      user: user._id,
+    }).populate(
+      "market",
+      "question category icon yesPrice noPrice"
+    );
+
+    const grouped = {};
+
+    for (const trade of trades) {
+      const key = `${trade.market._id}-${trade.side}`;
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          market: trade.market,
+          side: trade.side,
+          shares: 0,
+          costBasis: 0,
+        };
+      }
+
+      const sign = trade.mode === "buy" ? 1 : -1;
+
+      grouped[key].shares += sign * trade.shares;
+      grouped[key].costBasis += sign * trade.amount;
+    }
+
+    const positions = Object.values(grouped).filter(
+      (position) => position.shares > 0.01
+    );
+
     res.json(positions);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Positions error:", err);
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 

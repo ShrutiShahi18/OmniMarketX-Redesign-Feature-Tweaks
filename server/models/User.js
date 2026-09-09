@@ -1,14 +1,48 @@
 import mongoose from "mongoose";
 
-// One demo user per install for now — no auth system yet.
-// Swap to a real users collection + JWT once real accounts are needed.
 const userSchema = new mongoose.Schema(
   {
-    displayName: { type: String, required: true },
-    username: { type: String, required: true, unique: true },
-    demoBalance: { type: Number, default: 10000 },
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: "",
+    },
+
+    displayName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+
+    photoURL: {
+      type: String,
+      default: "",
+    },
+
+    demoBalance: {
+      type: Number,
+      default: 10000,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 export default mongoose.model("User", userSchema);

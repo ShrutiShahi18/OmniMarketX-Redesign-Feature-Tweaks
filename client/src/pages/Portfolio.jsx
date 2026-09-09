@@ -1,31 +1,233 @@
-export default function Portfolio({ positions, user, openMarket }) {
-  const totalValue = positions.reduce((s, p) => s + p.shares * (p.side === "yes" ? p.market.yesPrice : p.market.noPrice), user.demoBalance);
-  const totalPL = +(totalValue - 10000).toFixed(2);
+import { useEffect, useState } from "react";
+import { api } from "../api";
+
+export default function Portfolio({ user, navigate }) {
+  const [positions, setPositions] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadPortfolio() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [positionsData, historyData] = await Promise.all([
+        api.getPositions(),
+        api.getHistory(),
+      ]);
+
+      setPositions(positionsData);
+      setHistory(historyData);
+    } catch (err) {
+      console.error("Failed to load portfolio:", err);
+      setError(err.message || "Failed to load portfolio");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPortfolio();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="page-section">
+        <div className="page-header">
+          <div>
+            <h1>Portfolio</h1>
+            <p>Track your open positions and trading history.</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="empty-state">
+            Loading portfolio...
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="page-title">Portfolio</h1>
-      <p className="page-sub">Demo positions — shared demo-market prices, virtual funds.</p>
-      <div className="stat-strip">
-        <div className="stat-card"><div className="l">Total Value</div><div className="v">{totalValue.toFixed(2)} USDC</div></div>
-        <div className="stat-card"><div className="l">Total P&amp;L</div><div className={"v" + (totalPL >= 0 ? " pos" : "")}>{totalPL >= 0 ? "+" : ""}{totalPL} USDC</div></div>
-        <div className="stat-card"><div className="l">Open Positions</div><div className="v">{positions.length}</div></div>
+    <section className="page-section">
+      <div className="page-header">
+        <div>
+          <h1>Portfolio</h1>
+          <p>
+            {user?.displayName
+              ? `${user.displayName}'s portfolio`
+              : "Track your positions and trading activity."}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => navigate("/markets")}
+        >
+          Explore Markets
+        </button>
       </div>
-      <div className="side-card" style={{ padding: "6px 8px" }}>
-        <table className="ptable">
-          <tbody>
-            <tr><th>Market</th><th>Position</th><th>Shares</th></tr>
-            {positions.length === 0 && <tr><td colSpan="3" style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "24px 0" }}>No open positions yet — buy into a market to see it here.</td></tr>}
-            {positions.map((p) => (
-              <tr key={p.market._id + p.side} onClick={() => openMarket(p.market)} style={{ cursor: "pointer" }}>
-                <td><div className="m">{p.market.question}</div><div className="c">{p.market.icon} {p.market.category.toUpperCase()}</div></td>
-                <td><span className="pos-tag" style={p.side === "no" ? { background: "var(--negative-glow)", color: "var(--negative)" } : undefined}>{p.side.toUpperCase()}</span></td>
-                <td className="num">{p.shares.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+
+      {error && (
+        <div className="card">
+          <div className="empty-state">
+            <strong>Couldn't load portfolio</strong>
+            <p>{error}</p>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadPortfolio}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!error && (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-label">Balance</span>
+              <strong className="stat-value">
+                {Number(user?.demoBalance || 0).toFixed(2)}
+              </strong>
+              <span className="stat-meta">Demo USDC</span>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Open Positions</span>
+              <strong className="stat-value">
+                {positions.length}
+              </strong>
+              <span className="stat-meta">Active positions</span>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Trades</span>
+              <strong className="stat-value">
+                {history.length}
+              </strong>
+              <span className="stat-meta">Total trades</span>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <h2>Open Positions</h2>
+                <p>Your current market positions.</p>
+              </div>
+            </div>
+
+            {positions.length === 0 ? (
+              <div className="empty-state">
+                <strong>No open positions</strong>
+                <p>
+                  You don't have any active positions yet.
+                </p>
+
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate("/markets")}
+                >
+                  Browse Markets
+                </button>
+              </div>
+            ) : (
+              <div className="portfolio-list">
+                {positions.map((position) => (
+                  <div
+                    className="portfolio-row"
+                    key={`${position.market?._id}-${position.side}`}
+                  >
+                    <div className="portfolio-main">
+                      <strong>
+                        {position.market?.question ||
+                          "Unknown market"}
+                      </strong>
+
+                      <span>
+                        {position.side.toUpperCase()} ·{" "}
+                        {Number(position.shares || 0).toFixed(2)} shares
+                      </span>
+                    </div>
+
+                    <div className="portfolio-value">
+                      <strong>
+                        {Number(
+                          position.costBasis || 0
+                        ).toFixed(2)}
+                      </strong>
+
+                      <span>Cost basis</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <h2>Trade History</h2>
+                <p>Your most recent trades.</p>
+              </div>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="empty-state">
+                <strong>No trades yet</strong>
+                <p>
+                  Your completed trades will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="portfolio-list">
+                {history.map((trade) => (
+                  <div
+                    className="portfolio-row"
+                    key={trade._id}
+                  >
+                    <div className="portfolio-main">
+                      <strong>
+                        {trade.market?.question ||
+                          "Unknown market"}
+                      </strong>
+
+                      <span>
+                        {trade.mode?.toUpperCase()}{" "}
+                        {trade.side?.toUpperCase()} ·{" "}
+                        {Number(trade.shares || 0).toFixed(2)} shares
+                      </span>
+                    </div>
+
+                    <div className="portfolio-value">
+                      <strong>
+                        {Number(trade.total || 0).toFixed(2)}
+                      </strong>
+
+                      <span>
+                        {trade.createdAt
+                          ? new Date(
+                              trade.createdAt
+                            ).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </section>
   );
 }

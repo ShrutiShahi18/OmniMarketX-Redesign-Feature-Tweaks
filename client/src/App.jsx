@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
-import { api } from "./api.js";
-import Sidebar from "./components/Sidebar.jsx";
-import Topbar from "./components/Topbar.jsx";
-import Ticker from "./components/Ticker.jsx";
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
+import { api } from "./api";
+
+import Auth from "./pages/Auth.jsx";
 import Home from "./pages/Home.jsx";
 import Learn from "./pages/Learn.jsx";
 import Markets from "./pages/Markets.jsx";
-import Trending from "./pages/Trending.jsx";
+import MarketDetail from "./pages/MarketDetail.jsx";
 import Social from "./pages/Social.jsx";
 import Portfolio from "./pages/Portfolio.jsx";
+import Profile from "./pages/Profile.jsx";
 import Wallet from "./pages/Wallet.jsx";
 import Leaderboard from "./pages/Leaderboard.jsx";
 import Activity from "./pages/Activity.jsx";
@@ -16,372 +17,420 @@ import Groups from "./pages/Groups.jsx";
 import Settings from "./pages/Settings.jsx";
 import Subscription from "./pages/Subscription.jsx";
 import Checkout from "./pages/Checkout.jsx";
-import Logo from "./components/Logo.jsx";
-import MarketDetail from "./pages/MarketDetail.jsx";
+import Notifications from "./pages/Notifications.jsx";
+import Messages from "./pages/Messages.jsx";
 
-const SCREEN_PATHS = {
-  home: "/",
-  learn: "/learn",
-  markets: "/markets",
-  trending: "/trending",
-  social: "/social",
-  portfolio: "/portfolio",
-  wallet: "/wallet",
-  leaderboard: "/leaderboard",
-  activity: "/activity",
-  groups: "/groups",
-  settings: "/settings",
-  subscription: "/subscription",
-  checkout: "/checkout",
+import Sidebar from "./components/Sidebar.jsx";
+import Topbar from "./components/Topbar.jsx";
+import Ticker from "./components/Ticker.jsx";
+import Logo from "./components/Logo.jsx";
+
+import "./styles/app.css";
+
+const ROUTES = {
+  "/": "home",
+  "/home": "home",
+  "/learn": "learn",
+  "/markets": "markets",
+  "/trending": "trending",
+  "/social": "social",
+  "/portfolio": "portfolio",
+  "/profile": "profile",
+  "/wallet": "wallet",
+  "/leaderboard": "leaderboard",
+  "/activity": "activity",
+  "/groups": "groups",
+  "/settings": "settings",
+  "/subscription": "subscription",
+  "/checkout": "checkout",
+  "/notifications": "notifications",
+  "/messages": "messages",
 };
 
-function getRouteFromPath() {
+function getRoute() {
   const path = window.location.pathname;
 
-  if (path === "/" || path === "") {
-    return { screen: "home" };
-  }
-
   if (path.startsWith("/market/")) {
-    const id = path.split("/market/")[1];
-
     return {
-      screen: "detail",
-      marketId: id,
+      screen: "market",
+      marketId: path.split("/")[2],
     };
   }
 
-  const entry = Object.entries(SCREEN_PATHS).find(
-    ([, route]) => route === path
+  return {
+    screen: ROUTES[path] || "home",
+    marketId: null,
+  };
+}
+
+function LoadingScreen({ text }) {
+  return (
+    <div className="omx-loading">
+      <div className="omx-loading-logo">
+        <Logo />
+      </div>
+
+      <div className="omx-loading-name">
+        OmniMarketX
+      </div>
+
+      <div className="omx-loading-spinner" />
+
+      <div className="omx-loading-text">
+        {text}
+      </div>
+    </div>
   );
-
-  if (entry) {
-    return { screen: entry[0] };
-  }
-
-  return { screen: "home" };
 }
 
 export default function App() {
-  const initialRoute = getRouteFromPath();
+  const { user: firebaseUser, authLoading } =
+    useAuth();
 
-  const [theme, setTheme] = useState("dark");
-  const [screen, setScreen] = useState(initialRoute.screen);
-  const [mode, setMode] = useState("demo");
-  const [category, setCategory] = useState("All");
-  const [sort, setSort] = useState("volume");
-  const [isPro, setIsProState] = useState(
-    () => localStorage.getItem("omx_pro") === "1"
-  );
-
-  function setIsPro(val) {
-    localStorage.setItem("omx_pro", val ? "1" : "0");
-    setIsProState(val);
-  }
-
+  const [route, setRoute] = useState(getRoute);
   const [user, setUser] = useState(null);
   const [markets, setMarkets] = useState([]);
-  const [allMarkets, setAllMarkets] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [activeMarket, setActiveMarket] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  /*
-   * Handle browser Back / Forward buttons
-   * and mobile browser swipe navigation.
-   */
-  useEffect(() => {
-    function handlePopState() {
-      const route = getRouteFromPath();
+  const screen = route.screen;
 
-      setScreen(route.screen);
-
-      if (route.screen === "detail" && route.marketId) {
-        const existingMarket = allMarkets.find(
-          (market) => String(market._id) === String(route.marketId)
-        );
-
-        if (existingMarket) {
-          setActiveMarket(existingMarket);
-        } else {
-          api
-            .getMarket(route.marketId)
-            .then(setActiveMarket)
-            .catch(() => {
-              window.history.replaceState({}, "", "/");
-              setScreen("home");
-              setActiveMarket(null);
-            });
-        }
-      } else {
-        setActiveMarket(null);
-      }
-    }
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [allMarkets]);
-
-  /*
-   * Load initial application data.
-   */
-  useEffect(() => {
-    (async () => {
-      try {
-        const [me, allM, ps] = await Promise.all([
-          api.getMe(),
-          api.getMarkets(),
-          api.getPosts(),
-        ]);
-
-        setUser(me);
-        setAllMarkets(allM);
-        setPosts(ps);
-
-        /*
-         * If the user opened a market URL directly,
-         * restore that market after the initial data loads.
-         */
-        const route = getRouteFromPath();
-
-        if (route.screen === "detail" && route.marketId) {
-          const market = allM.find(
-            (item) => String(item._id) === String(route.marketId)
-          );
-
-          if (market) {
-            setActiveMarket(market);
-          } else {
-            try {
-              const fetchedMarket = await api.getMarket(route.marketId);
-              setActiveMarket(fetchedMarket);
-            } catch {
-              window.history.replaceState({}, "", "/");
-              setScreen("home");
-            }
-          }
-        }
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Failed to load OmniMarketX:", error);
-        setLoading(false);
-      }
-    })();
+  const navigate = useCallback((path) => {
+    window.history.pushState({}, "", path);
+    setRoute(getRoute());
+    window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
-    api.getMarkets(category, sort).then(setMarkets);
-  }, [category, sort]);
+    const handlePopState = () => {
+      setRoute(getRoute());
+      window.scrollTo(0, 0);
+    };
+
+    window.addEventListener(
+      "popstate",
+      handlePopState
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
+    };
+  }, []);
 
   useEffect(() => {
-    if (!user) return;
-    refreshWalletData(user._id);
-  }, [user?._id]);
+    if (authLoading) return;
 
-  function refreshWalletData(userId) {
-    api.getHistory(userId).then(setHistory);
-    api.getPositions(userId).then(setPositions);
-  }
-
-  /*
-   * Central navigation function.
-   *
-   * Every normal in-app navigation creates a browser
-   * history entry, so Back / Forward work naturally.
-   */
-  function navigate(nextScreen, market = null) {
-    let path = SCREEN_PATHS[nextScreen] || "/";
-
-    if (nextScreen === "detail") {
-      if (!market?._id) return;
-
-      path = `/market/${market._id}`;
-      setActiveMarket(market);
-    } else {
-      setActiveMarket(null);
+    if (!firebaseUser) {
+      setUser(null);
+      setMarkets([]);
+      setPosts([]);
+      setLoading(false);
+      setLoadError("");
+      return;
     }
 
-    window.history.pushState({}, "", path);
-    setScreen(nextScreen);
+    let cancelled = false;
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    async function loadAppData() {
+      setLoading(true);
+      setLoadError("");
+
+      try {
+        const timeoutPromise =
+          new Promise((_, reject) => {
+            setTimeout(() => {
+              reject(
+                new Error(
+                  "The backend did not respond within 15 seconds."
+                )
+              );
+            }, 15000);
+          });
+
+        const dataPromise =
+          Promise.all([
+            api.getMe(),
+            api.getMarkets(),
+            api.getPosts(),
+          ]);
+
+        const [me, marketData, postData] =
+          await Promise.race([
+            dataPromise,
+            timeoutPromise,
+          ]);
+
+        if (cancelled) return;
+
+        setUser(me);
+        setMarkets(marketData);
+        setPosts(postData);
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "Failed to load OmniMarketX:",
+          error
+        );
+
+        setLoadError(
+          error?.message ||
+            "Failed to connect to the OmniMarketX backend."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadAppData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, firebaseUser]);
+
+  const refreshMarkets =
+    useCallback(async () => {
+      try {
+        const data = await api.getMarkets();
+        setMarkets(data);
+      } catch (error) {
+        console.error(
+          "Failed to refresh markets:",
+          error
+        );
+      }
+    }, []);
+
+  const refreshPosts =
+    useCallback(async () => {
+      try {
+        const data = await api.getPosts();
+        setPosts(data);
+      } catch (error) {
+        console.error(
+          "Failed to refresh posts:",
+          error
+        );
+      }
+    }, []);
+
+  const handleUserUpdated =
+    useCallback((updatedUser) => {
+      setUser(updatedUser);
+    }, []);
+
+  const handleTrade = useCallback(
+    async (tradeData) => {
+      const result =
+        await api.postTrade(tradeData);
+
+      setUser((current) =>
+        current
+          ? {
+              ...current,
+              demoBalance:
+                result.newBalance,
+            }
+          : current
+      );
+
+      await refreshMarkets();
+
+      return result;
+    },
+    [refreshMarkets]
+  );
+
+  const handleCreatePost =
+    useCallback(
+      async (content) => {
+        await api.createPost({ content });
+        await refreshPosts();
+      },
+      [refreshPosts]
+    );
+
+  const handleLikePost =
+    useCallback(
+      async (postId) => {
+        await api.likePost(postId);
+        await refreshPosts();
+      },
+      [refreshPosts]
+    );
+
+  if (authLoading) {
+    return (
+      <LoadingScreen text="Checking authentication…" />
+    );
   }
 
-  function openMarket(m) {
-    navigate("detail", m);
+  if (!firebaseUser) {
+    return <Auth />;
   }
 
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-
-    setTheme(next);
-    document.body.setAttribute("data-theme", next);
+  if (loading) {
+    return (
+      <LoadingScreen text="Loading OmniMarketX…" />
+    );
   }
 
-  if (loading || !user) {
+  if (loadError || !user) {
     return (
       <div className="omx-loading">
-        <div className="brand-mark">
-          <Logo size={26} />
+        <div className="omx-loading-logo">
+          <Logo />
         </div>
 
-        <div className="lbl">Loading OmniMarketX…</div>
+        <div className="omx-loading-name">
+          OmniMarketX
+        </div>
+
+        <div className="card omx-error-card">
+          <h2>
+            Couldn't connect to OmniMarketX
+          </h2>
+
+          <p>
+            {loadError ||
+              "Your account was authenticated, but the application data could not be loaded."}
+          </p>
+
+          <button
+            type="button"
+            className="cta"
+            onClick={() =>
+              window.location.reload()
+            }
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
-  const displayMarkets = markets.length ? markets : allMarkets;
+  const commonProps = {
+    user,
+    markets,
+    posts,
+    navigate,
+    refreshMarkets,
+    refreshPosts,
+    onTrade: handleTrade,
+    onCreatePost: handleCreatePost,
+    onLikePost: handleLikePost,
+    onUserUpdated:
+      handleUserUpdated,
+  };
 
-  /*
-   * Checkout is rendered separately, just like before,
-   * but now its Back action also participates in browser history.
-   */
-  if (screen === "checkout") {
-    return (
-      <Checkout
-        user={user}
-        setIsPro={setIsPro}
-        goBack={() => navigate("subscription")}
-      />
-    );
+  let page;
+
+  switch (screen) {
+    case "learn":
+      page = <Learn {...commonProps} />;
+      break;
+
+    case "markets":
+      page = <Markets {...commonProps} />;
+      break;
+
+    case "market":
+      page = (
+        <MarketDetail
+          {...commonProps}
+          marketId={route.marketId}
+        />
+      );
+      break;
+
+    case "social":
+      page = <Social {...commonProps} />;
+      break;
+
+    case "portfolio":
+      page = <Portfolio {...commonProps} />;
+      break;
+
+    case "profile":
+      page = <Profile {...commonProps} />;
+      break;
+
+    case "wallet":
+      page = <Wallet {...commonProps} />;
+      break;
+
+    case "leaderboard":
+      page = <Leaderboard {...commonProps} />;
+      break;
+
+    case "activity":
+      page = <Activity {...commonProps} />;
+      break;
+
+    case "groups":
+      page = <Groups {...commonProps} />;
+      break;
+
+    case "settings":
+      page = <Settings {...commonProps} />;
+      break;
+
+    case "subscription":
+      page = <Subscription {...commonProps} />;
+      break;
+
+    case "checkout":
+      page = <Checkout {...commonProps} />;
+      break;
+
+    case "notifications":
+      page = (
+        <Notifications {...commonProps} />
+      );
+      break;
+
+    case "messages":
+      page = (
+        <Messages {...commonProps} />
+      );
+      break;
+
+    case "home":
+    default:
+      page = <Home {...commonProps} />;
+      break;
   }
 
   return (
     <>
-      <Ticker markets={allMarkets} />
+      <Ticker markets={markets} />
 
       <div className="shell">
         <Sidebar
           screen={screen}
-          setScreen={navigate}
-          theme={theme}
-          toggleTheme={toggleTheme}
-          isPro={isPro}
+          navigate={navigate}
+          theme="dark"
+          toggleTheme={() => {}}
+          isPro={false}
         />
 
-        <div className="main">
+        <main className="main">
           <Topbar
             user={user}
-            mode={mode}
-            setMode={setMode}
-            setScreen={navigate}
+            screen={screen}
+            navigate={navigate}
           />
 
-          {screen === "home" && (
-            <Home
-              markets={allMarkets}
-              category={category}
-              setCategory={setCategory}
-              openMarket={openMarket}
-              setScreen={navigate}
-              posts={posts}
-            />
-          )}
-
-          {screen === "learn" && (
-            <Learn setScreen={navigate} />
-          )}
-
-          {screen === "markets" && (
-            <Markets
-              markets={displayMarkets}
-              category={category}
-              setCategory={setCategory}
-              sort={sort}
-              setSort={setSort}
-              openMarket={openMarket}
-            />
-          )}
-
-          {screen === "trending" && (
-            <Trending
-              markets={allMarkets}
-              category={category}
-              setCategory={setCategory}
-              openMarket={openMarket}
-            />
-          )}
-
-          {screen === "social" && (
-            <Social
-              posts={posts}
-              setPosts={setPosts}
-              user={user}
-            />
-          )}
-
-          {screen === "portfolio" && (
-            <Portfolio
-              positions={positions}
-              user={user}
-              openMarket={openMarket}
-            />
-          )}
-
-          {screen === "wallet" && (
-            <Wallet
-              user={user}
-              setUser={setUser}
-              history={history}
-              setHistory={setHistory}
-            />
-          )}
-
-          {screen === "leaderboard" && <Leaderboard />}
-
-          {screen === "activity" && (
-            <Activity history={history} />
-          )}
-
-          {screen === "groups" && <Groups />}
-
-          {screen === "settings" && (
-            <Settings user={user} />
-          )}
-
-          {screen === "subscription" && (
-            <Subscription
-              isPro={isPro}
-              setIsPro={setIsPro}
-              setScreen={navigate}
-            />
-          )}
-
-          {screen === "detail" && activeMarket && (
-            <MarketDetail
-              market={activeMarket}
-              user={user}
-              setUser={setUser}
-              setScreen={navigate}
-              onTradeExecuted={() =>
-                refreshWalletData(user._id)
-              }
-            />
-          )}
-        </div>
-      </div>
-
-      <div
-        className="assist-fab"
-        title="Ask the market assistant"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-        </svg>
+          {page}
+        </main>
       </div>
     </>
   );
