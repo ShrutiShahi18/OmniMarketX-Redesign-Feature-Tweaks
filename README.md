@@ -1,5 +1,7 @@
 # ⚡ OmniMarketX — Reimagined
 
+Visit Live: https://omnimarketx-redesign-frontend.onrender.com/
+
 > **Trade what matters. Learn as you go. Actually persisted.**
 
 A full-stack, dark-mode-native social prediction market — rebuilt from the
