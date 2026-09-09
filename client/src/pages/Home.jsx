@@ -13,13 +13,12 @@ const HASHTAGS = [
 
 export default function Home({
   markets = [],
-  category = "All",
-  setCategory,
   navigate,
   posts = [],
 }) {
   const [showHero, setShowHero] = useState(true);
   const [showTip, setShowTip] = useState(true);
+  const [category, setCategory] = useState("All");
 
   useEffect(() => {
     localStorage.removeItem("omx_hide_hero");
