@@ -50,25 +50,21 @@ function NotificationIcon() {
 
 export default function Topbar({
   user,
-  mode,
-  setMode,
   navigate,
 }) {
   const [open, setOpen] = useState(null);
+  const [currentMode, setCurrentMode] = useState("real");
 
   function handleNavigate(path) {
     setOpen(null);
 
     if (navigate) {
       navigate(path);
-      return;
     }
+  }
 
-    window.history.pushState({}, "", path);
-
-    window.dispatchEvent(
-      new PopStateEvent("popstate")
-    );
+  function handleModeChange(mode) {
+    setCurrentMode(mode);
   }
 
   const initials =
@@ -91,25 +87,24 @@ export default function Topbar({
       </div>
 
       <div className="topbar-right">
-        <div
-          className="mode-pill"
-          onClick={(e) => {
-            e.stopPropagation();
-
-            if (setMode) {
-              setMode(
-                mode === "demo"
-                  ? "real"
-                  : "demo"
-              );
-            }
-          }}
-        >
-          <span className={mode === "real" ? "on" : ""}>
+        <div className="mode-pill">
+          <span
+            className={currentMode === "real" ? "on" : ""}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleModeChange("real");
+            }}
+          >
             Real
           </span>
 
-          <span className={mode === "demo" ? "on" : ""}>
+          <span
+            className={currentMode === "demo" ? "on" : ""}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleModeChange("demo");
+            }}
+          >
             Demo
           </span>
         </div>
@@ -118,8 +113,8 @@ export default function Topbar({
           type="button"
           className="icon-btn"
           aria-label="Messages"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             handleNavigate("/messages");
           }}
         >
@@ -130,8 +125,8 @@ export default function Topbar({
           type="button"
           className="icon-btn"
           aria-label="Notifications"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             handleNavigate("/notifications");
           }}
         >
@@ -143,8 +138,8 @@ export default function Topbar({
             type="button"
             className="avatar"
             aria-label="Account menu"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
 
               setOpen(
                 open === "avatar"
@@ -159,12 +154,10 @@ export default function Topbar({
           <div
             className={
               "dd-panel wide" +
-              (open === "avatar"
-                ? ""
-                : " hidden")
+              (open === "avatar" ? "" : " hidden")
             }
-            onClick={(e) =>
-              e.stopPropagation()
+            onClick={(event) =>
+              event.stopPropagation()
             }
           >
             <div className="dd-header">
@@ -175,13 +168,12 @@ export default function Topbar({
               <div>
                 <div className="name">
                   {user?.displayName ||
-                    "Shruti Shahi"}
+                    "OmniMarketX User"}
                 </div>
 
                 <div className="handle">
                   omnimarketx.com/u/
-                  {user?.username ||
-                    "yoshruti18"}
+                  {user?.username || "user"}
                 </div>
               </div>
             </div>
@@ -193,9 +185,7 @@ export default function Topbar({
                   handleNavigate("/profile")
                 }
               >
-                <span className="ic">
-                  👤
-                </span>
+                <span className="ic">👤</span>
                 View Profile
               </div>
 
@@ -205,9 +195,7 @@ export default function Topbar({
                   handleNavigate("/wallet")
                 }
               >
-                <span className="ic">
-                  💳
-                </span>
+                <span className="ic">💳</span>
                 Deposit
               </div>
 
@@ -217,13 +205,11 @@ export default function Topbar({
                   handleNavigate("/settings")
                 }
               >
-                <span className="ic">
-                  ⚙️
-                </span>
+                <span className="ic">⚙️</span>
                 Settings
               </div>
 
-              <div className="dd-divider"></div>
+              <div className="dd-divider" />
 
               <div
                 className="dd-item danger"
@@ -231,9 +217,7 @@ export default function Topbar({
                   color: "var(--negative)",
                 }}
               >
-                <span className="ic">
-                  ✕
-                </span>
+                <span className="ic">✕</span>
                 Log Out
               </div>
             </div>
