@@ -16,13 +16,18 @@ was ever just sitting in memory.
 ### ✨ Highlights at a glance
 - 🎨 **An original visual identity** — three purpose-built fonts, a custom
   logomark, and a dark theme designed from scratch (not light-mode inverted)
+- 🔐 **Real Firebase Authentication** — Google sign-in, email/password
+  signup and login, password reset, and authenticated API requests
 - 📘 **Built-in trading education** — a glossary page + inline tooltips so a
   total beginner isn't dropped straight into a probability chart
 - 🎠 **A real carousel**, not a raw scrollbar — arrow-driven, snaps per card
 - 👑 **A working Pro upgrade flow**, including a full checkout page
-- 🗄️ **Genuine MongoDB persistence** for markets, trades, posts, and likes
+- 🗄️ **Genuine MongoDB persistence** for markets, trades, users, posts,
+  comments, likes, wallet balances, and portfolio data
+- 💬 **A social layer that's actually social** — post, like, comment, reply,
+  and interact with the feed
+- 🔔 **Dedicated Notifications and Messages surfaces** with working routing
 - 📱 **Actual responsive breakpoints** — tested down to mobile, not just "shrink and hope"
-- 💬 **A social layer that's actually social** — post, like, and see it reflected instantly
 
 ## Structure
 ```
@@ -33,15 +38,16 @@ client/   React + Vite frontend (same CSS/design, no visual changes)
 ## Prerequisites
 - Node.js 18+
 - MongoDB running locally (or an Atlas connection string)
+- Firebase project with Email/Password and Google sign-in enabled
 
 ## Setup
 
 ### 1. Backend
 ```bash
 cd server
-cp .env.example .env      # edit MONGO_URI if not using local default
+cp .env.example .env      # add MONGO_URI + Firebase Admin credentials
 npm install
-npm run seed               # populates the 11 real markets + demo user + 1 post
+npm run seed               # populates the real markets
 npm run dev                 # http://localhost:5000
 ```
 
@@ -49,20 +55,14 @@ npm run dev                 # http://localhost:5000
 ```bash
 cd client
 npm install
-npm run dev                 # http://localhost:5173 (proxies /api to :5000)
+npm run dev                 # http://localhost:5173
 ```
 
-Open http://localhost:5173 — Vite's dev proxy forwards `/api/*` to the
-Express server, so no CORS config is needed in dev.
+Configure the required Firebase client variables in `client/.env` and the
+Firebase Admin credentials in `server/.env` before starting the app.
 
-## Beginner-friendly features
-- **Learn page** (sidebar → 📘 Learn): a 2-minute glossary covering YES/NO shares,
-  price-as-probability, volume, liquidity, fees, and resolution — aimed at someone
-  who has never traded or used a prediction market before.
-- **Dismissible tip banner on Home** pointing new visitors to the Learn page
-  (persists dismissal via localStorage, won't nag returning users).
-- **Inline tooltips** on Market Detail (hover Volume/Traders/Closes, Shares,
-  Fees, and the liquidity line) explaining each term without leaving the page.
+Open http://localhost:5173. The frontend talks to the Express API through
+`VITE_API_URL`; the local development setup can use `http://localhost:5000`.
 
 ## Beginner-friendly features
 - **Learn page** (sidebar → 📘 Learn): a 2-minute glossary covering YES/NO shares,
@@ -150,6 +150,8 @@ and either filters the real API data (categories, sort) or drives local
 UI state where there's no backing data model yet (see above).
 
 ## Next steps if continuing this build
-- Add JWT auth + real user accounts (User model already has the shape for it)
+- Add persistent notification and messaging models/API
 - Add an Order/Position collection instead of aggregating Trade history live
 - Add a real trending/leaderboard aggregation job
+- Add a real payment processor for Pro subscriptions
+- Add server-side group membership and a real search experience
