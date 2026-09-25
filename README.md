@@ -4,6 +4,14 @@ Visit Live: https://omnimarketx-redesign-frontend.onrender.com/
 
 > **Trade what matters. Learn as you go. Actually persisted.**
 
+![MongoDB](https://img.shields.io/badge/MongoDB-Persistence-47A248?style=flat&logo=mongodb&logoColor=white)
+![Express](https://img.shields.io/badge/Express-API-000000?style=flat&logo=express&logoColor=white)
+![React](https://img.shields.io/badge/React-Frontend-61DAFB?style=flat&logo=react&logoColor=black)
+![Node.js](https://img.shields.io/badge/Node.js-Backend-339933?style=flat&logo=node.js&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Authentication-FFCA28?style=flat&logo=firebase&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-Build-646CFF?style=flat&logo=vite&logoColor=white)
+![Render](https://img.shields.io/badge/Render-Live_Deployment-46E3B7?style=flat&logo=render&logoColor=black)
+
 A full-stack, dark-mode-native social prediction market — rebuilt from the
 ground up on **MongoDB, Express, React, and Node (MERN)**, with an original
 design system, a real API behind every trade, and a genuine beginner
@@ -34,6 +42,12 @@ was ever just sitting in memory.
 server/   Express API + MongoDB models (Node, ESM)
 client/   React + Vite frontend (same CSS/design, no visual changes)
 ```
+
+## Deployment
+
+The current public build is deployed on **Render**:
+
+`https://omnimarketx-redesign-frontend.onrender.com/`
 
 ## Prerequisites
 - Node.js 18+
